@@ -554,7 +554,7 @@ namespace GabTracker
 
         #endregion
 
-        #region == Events ==
+/*        #region == Events ==
 
         // Declare the delegate (if using non-generic pattern).
         public delegate void TickEventHandler(object sender, EventArgs e);
@@ -567,11 +567,10 @@ namespace GabTracker
         protected virtual void onTick()
         {
             // Raise the event by using the () operator.
-            if (Tick != null)
-                Tick(this, new EventArgs());
+            Tick?.Invoke(this, new EventArgs());
         }
 
-        #endregion
+        #endregion*/
 
         /// <summary>
         /// Initialize a new instance of GabTracker.
@@ -991,14 +990,14 @@ namespace GabTracker
                 this.Invalidate();
             }
 
-            try
+/*            try
             {
-                Tick(this, new EventArgs());
+                Tick?.Invoke(this, new EventArgs());
             }
             catch
             {
                 
-            }
+            }*/
            
         }
 
