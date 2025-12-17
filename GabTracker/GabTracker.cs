@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
@@ -20,6 +20,26 @@ namespace GabTracker
         private double _gridoffsetx = 0;
         private double[] _arrtmp = { };
         bool _haserror = false;
+
+        private static void EnsureBufferCapacity(ref double[] buffer, int requiredSize)
+        {
+            if (buffer == null || buffer.Length < requiredSize)
+            {
+                buffer = new double[requiredSize];
+            }
+        }
+
+        private static int CopyFeedData(Queue<double> source, ref double[] target)
+        {
+            if (source == null || source.Count == 0)
+            {
+                return 0;
+            }
+
+            EnsureBufferCapacity(ref target, source.Count);
+            source.CopyTo(target, 0);
+            return source.Count;
+        }
 
 
         #region == Properties ==
@@ -673,30 +693,32 @@ namespace GabTracker
                 //auto max
                 if (_automax)
                 {
-                    tmp1 = _minimum;
-                    //for each feed in the tracker
+                    double maxCandidate = _minimum;
                     foreach (GabTrackerFeed feed in _feeds)
                     {
-                        if (_arrtmp != null)
-                            Array.Clear(_arrtmp, 0, _arrtmp.Length);
-                        _arrtmp = feed.Data.ToArray();
-                        for (int i = 0; i < _arrtmp.Length; i++) //we search for the maximum value in the feeds
+                        if (feed.Data == null)
                         {
-                            if (_arrtmp[i] > tmp1)
+                            continue;
+                        }
+
+                        foreach (double value in feed.Data)
+                        {
+                            if (value > maxCandidate)
                             {
-                                tmp1 = _arrtmp[i];
+                                maxCandidate = value;
                             }
                         }
                     }
-                    //we compute the new Maximum property value
-                    tmp2 = tmp1 * (_automaxpercentage / 100d);
-                    if(tmp2 > _minimum)
+
+                    double computedMaximum = maxCandidate * (_automaxpercentage / 100d);
+                    if (computedMaximum > _minimum)
                     {
-                        _maximum = Convert.ToInt32(Math.Ceiling(tmp2));
+                        _maximum = Convert.ToInt32(Math.Ceiling(computedMaximum));
                     }
-                    tmp1 = 0;
-                    tmp2 = 0;
                 }
+
+                double range = _maximum - _minimum;
+                double valueScale = range != 0 ? (double)e.ClipRectangle.Height / range : 0d;
 
                 //feed lines
                 lock (_feeds)
@@ -704,33 +726,26 @@ namespace GabTracker
                     //for each feed in the tracker
                     foreach (GabTrackerFeed feed in _feeds)
                     {
-                        if (_arrdata != null)
-                            Array.Clear(_arrdata, 0, _arrdata.Length);
-
-                        try
+                        int feedLength = CopyFeedData(feed.Data, ref _arrdata);
+                        if (feedLength == 0)
                         {
-                            _arrdata = feed.Data.ToArray();
+                            continue;
                         }
-                        catch (Exception)
-                        {
-                            _arrdata = new double[_maxdatainmemory];
-                        }
-
 
                         p = feed.LinePen;
                         fp = feed.FillPen;
                         sb = new SolidBrush(feed.LineColor);
                         
                         //for each value in the feed data
-                        for (int i = 0; i < _arrdata.Length; i++)
+                        for (int i = 0; i < feedLength; i++)
                         {
                             //if the feed is not inverted, do not invert the Y axis
                             if (!feed.Inverted)
                             {
-                                tmp2 = (e.ClipRectangle.Height * (_maximum - _arrdata[i])) / (_maximum - _minimum);
-                                if (i < _arrdata.Length - 1)
+                                tmp2 = (_maximum - _arrdata[i]) * valueScale;
+                                if (i < feedLength - 1)
                                 {
-                                    tmp1 = (e.ClipRectangle.Height * (_maximum - _arrdata[i + 1])) / (_maximum - _minimum);
+                                    tmp1 = (_maximum - _arrdata[i + 1]) * valueScale;
                                 }
                                 else
                                 {
@@ -739,10 +754,10 @@ namespace GabTracker
                             }
                             else //we must invert the Y axis
                             {
-                                tmp2 = (e.ClipRectangle.Height * _arrdata[i]) / (_maximum - _minimum);
-                                if (i < _arrdata.Length - 1)
+                                tmp2 = _arrdata[i] * valueScale;
+                                if (i < feedLength - 1)
                                 {
-                                    tmp1 = (e.ClipRectangle.Height * _arrdata[i + 1]) / (_maximum - _minimum);
+                                    tmp1 = _arrdata[i + 1] * valueScale;
                                 }
                                 else
                                 {
@@ -764,11 +779,11 @@ namespace GabTracker
                             }
 
                             //draw the line between the two current points of data
-                            e.Graphics.DrawLine(p,
-                                e.ClipRectangle.Width - ((_arrdata.Length - (i+1)) * _gridintervalx),
-                                Convert.ToInt32(tmp1),
-                                e.ClipRectangle.Width - ((_arrdata.Length - (i+1)) * _gridintervalx + _gridintervalx),
-                                Convert.ToInt32(tmp2));
+                                e.Graphics.DrawLine(p,
+                                    e.ClipRectangle.Width - ((feedLength - (i+1)) * _gridintervalx),
+                                    Convert.ToInt32(tmp1),
+                                    e.ClipRectangle.Width - ((feedLength - (i+1)) * _gridintervalx + _gridintervalx),
+                                    Convert.ToInt32(tmp2));
 
                             //we search for the lowest feed value superior to the current feed value
                             //in order to fill the line area.
@@ -784,19 +799,21 @@ namespace GabTracker
                                         {
                                             if (!_feeds[k].Equals(feed)) //if the feed is same reference than the current feed
                                             {
-                                                if (_arrtmp != null)
-                                                    Array.Clear(_arrtmp, 0, _arrtmp.Length);
-                                                _arrtmp = _feeds[k].Data.ToArray();
+                                                int comparisonLength = CopyFeedData(_feeds[k].Data, ref _arrtmp);
+                                                if (comparisonLength == 0)
+                                                {
+                                                    continue;
+                                                }
 
-                                                if (i < _arrtmp.Length - 1)
+                                                if (i < comparisonLength - 1)
                                                 {
                                                     if (!_feeds[k].Inverted)
                                                     {
-                                                        tmp2 = (e.ClipRectangle.Height * (_maximum - _arrtmp[i + 1])) / (_maximum - _minimum); ;
+                                                        tmp2 = (_maximum - _arrtmp[i + 1]) * valueScale;
                                                     }
                                                     else
                                                     {
-                                                        tmp2 = (e.ClipRectangle.Height * _arrtmp[i + 1]) / (_maximum - _minimum);
+                                                        tmp2 = _arrtmp[i + 1] * valueScale;
                                                     }
 
                                                     if (tmp2 > tmp1)
@@ -807,15 +824,15 @@ namespace GabTracker
                                                         }
                                                     }
                                                 }
-                                                else if (i < _arrtmp.Length)
+                                                else if (i < comparisonLength)
                                                 {
                                                     if (!_feeds[k].Inverted)
                                                     {
-                                                        tmp2 = (e.ClipRectangle.Height * (_maximum - _arrtmp[i])) / (_maximum - _minimum); ;
+                                                        tmp2 = (_maximum - _arrtmp[i]) * valueScale;
                                                     }
                                                     else
                                                     {
-                                                        tmp2 = (e.ClipRectangle.Height * _arrtmp[i]) / (_maximum - _minimum);
+                                                        tmp2 = _arrtmp[i] * valueScale;
                                                     }
 
                                                     if (tmp2 > tmp1)
@@ -826,15 +843,15 @@ namespace GabTracker
                                                         }
                                                     }
                                                 }
-                                                else if (i == _arrtmp.Length)
+                                                else if (i == comparisonLength)
                                                 {
                                                     if (!_feeds[k].Inverted)
                                                     {
-                                                        tmp2 = (e.ClipRectangle.Height * (_maximum - _arrtmp[i - 1])) / (_maximum - _minimum); ;
+                                                        tmp2 = (_maximum - _arrtmp[i - 1]) * valueScale;
                                                     }
                                                     else
                                                     {
-                                                        tmp2 = (e.ClipRectangle.Height * _arrtmp[i - 1]) / (_maximum - _minimum);
+                                                        tmp2 = _arrtmp[i - 1] * valueScale;
                                                     }
 
                                                     if (tmp2 > tmp1)
@@ -849,19 +866,17 @@ namespace GabTracker
                                                 {
                                                     tmp3 = e.ClipRectangle.Height;
                                                 }
-
-                                                Array.Clear(_arrtmp, 0, _arrtmp.Length);
                                             }
                                         }
                                     }
                                 }
 
                                 // draw the filling line under the data point
-                                e.Graphics.DrawLine(fp,
-                                    e.ClipRectangle.Width - ((_arrdata.Length - (i+1)) * _gridintervalx),
-                                    Convert.ToInt32(tmp1),
-                                    e.ClipRectangle.Width - ((_arrdata.Length - (i+1)) * _gridintervalx),
-                                    Convert.ToInt32(tmp3));
+                                  e.Graphics.DrawLine(fp,
+                                      e.ClipRectangle.Width - ((feedLength - (i+1)) * _gridintervalx),
+                                      Convert.ToInt32(tmp1),
+                                      e.ClipRectangle.Width - ((feedLength - (i+1)) * _gridintervalx),
+                                      Convert.ToInt32(tmp3));
                             }
 
                         }
@@ -1563,3 +1578,4 @@ namespace GabTracker
         }*/
     }
 }
+
