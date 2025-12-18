@@ -43,6 +43,22 @@ namespace GabTracker
             return source.Count;
         }
 
+        private double GetFeedY(GabTrackerFeed feed, double rawValue, double valueScale)
+        {
+            return feed.Inverted ? rawValue * valueScale : (_maximum - rawValue) * valueScale;
+        }
+
+        private double GetFeedYAtIndex(GabTrackerFeed feed, double[] buffer, int bufferLength, int dataIndex, double valueScale)
+        {
+            if (bufferLength == 0)
+            {
+                return 0d;
+            }
+
+            int clampedIndex = Math.Max(0, Math.Min(bufferLength - 1, dataIndex));
+            return GetFeedY(feed, buffer[clampedIndex], valueScale);
+        }
+
 
         #region == Properties ==
 
@@ -631,7 +647,7 @@ namespace GabTracker
             double tmp2 = 0;
             double tmp3 = 0;
             Pen p;
-            Pen fp;
+            SolidBrush fb;
             SolidBrush sb;
             string tmpstr;
             Color tmpcol;
@@ -735,7 +751,7 @@ namespace GabTracker
                         }
 
                         p = feed.LinePen;
-                        fp = feed.FillPen;
+                        fb = feed.FillBrush;
                         sb = new SolidBrush(feed.LineColor);
                         
                         //for each value in the feed data
@@ -773,112 +789,77 @@ namespace GabTracker
                                 p.Dispose();
                                 p = feed.LinePen;
 
-                                fp.Dispose();
-                                fp = feed.FillPen;
+                                fb.Dispose();
+                                fb = feed.FillBrush;
 
                                 sb.Dispose();
                                 sb = new SolidBrush(feed.LineColor);
                             }
 
+                            float segmentStartX = e.ClipRectangle.Width - ((feedLength - (i + 1)) * _gridintervalx);
+                            float segmentEndX = segmentStartX - _gridintervalx;
+
                             //draw the line between the two current points of data
-                                e.Graphics.DrawLine(p,
-                                    e.ClipRectangle.Width - ((feedLength - (i+1)) * _gridintervalx),
-                                    Convert.ToInt32(tmp1),
-                                    e.ClipRectangle.Width - ((feedLength - (i+1)) * _gridintervalx + _gridintervalx),
-                                    Convert.ToInt32(tmp2));
+                            e.Graphics.DrawLine(
+                                p,
+                                segmentStartX,
+                                Convert.ToInt32(tmp1),
+                                segmentEndX,
+                                Convert.ToInt32(tmp2));
 
-                            //we search for the lowest feed value superior to the current feed value
-                            //in order to fill the line area.
-                            tmp3 = e.ClipRectangle.Height;
-
-                            if (feed.FillUnder) //if we must fill the space under the line then
+                            if (feed.FillUnder)
                             {
-                                if (!feed.FillSuperpose) //if we must superpose the fill then
+                                double fillBottomStart = e.ClipRectangle.Height;
+                                double fillBottomEnd = e.ClipRectangle.Height;
+                                int startIndex = Math.Max(0, Math.Min(feedLength - 1, i + 1));
+                                int endIndex = Math.Max(0, Math.Min(feedLength - 1, i));
+
+                                if (!feed.FillSuperpose)
                                 {
-                                    for (int k = 0; k < _feeds.Count; k++) //for each feed
+                                    for (int k = 0; k < _feeds.Count; k++)
                                     {
-                                        if (_feeds[k].FillStopOtherFeeds) //if the feed must stop other feeds from filling
+                                        if (!_feeds[k].FillStopOtherFeeds || _feeds[k].Equals(feed))
                                         {
-                                            if (!_feeds[k].Equals(feed)) //if the feed is same reference than the current feed
+                                            continue;
+                                        }
+
+                                        int comparisonLength = CopyFeedData(_feeds[k].Data, ref _arrtmp);
+                                        if (comparisonLength == 0)
+                                        {
+                                            continue;
+                                        }
+
+                                        double otherStartY = GetFeedYAtIndex(_feeds[k], _arrtmp, comparisonLength, startIndex, valueScale);
+                                        if (otherStartY > tmp1)
+                                        {
+                                            double candidate = otherStartY - Math.Ceiling(_feeds[k].LineThickness / 2);
+                                            if (candidate < fillBottomStart)
                                             {
-                                                int comparisonLength = CopyFeedData(_feeds[k].Data, ref _arrtmp);
-                                                if (comparisonLength == 0)
-                                                {
-                                                    continue;
-                                                }
+                                                fillBottomStart = candidate;
+                                            }
+                                        }
 
-                                                if (i < comparisonLength - 1)
-                                                {
-                                                    if (!_feeds[k].Inverted)
-                                                    {
-                                                        tmp2 = (_maximum - _arrtmp[i + 1]) * valueScale;
-                                                    }
-                                                    else
-                                                    {
-                                                        tmp2 = _arrtmp[i + 1] * valueScale;
-                                                    }
-
-                                                    if (tmp2 > tmp1)
-                                                    {
-                                                        if (tmp2 < tmp3)
-                                                        {
-                                                            tmp3 = tmp2 - Math.Ceiling(_feeds[k].LineThickness / 2);
-                                                        }
-                                                    }
-                                                }
-                                                else if (i < comparisonLength)
-                                                {
-                                                    if (!_feeds[k].Inverted)
-                                                    {
-                                                        tmp2 = (_maximum - _arrtmp[i]) * valueScale;
-                                                    }
-                                                    else
-                                                    {
-                                                        tmp2 = _arrtmp[i] * valueScale;
-                                                    }
-
-                                                    if (tmp2 > tmp1)
-                                                    {
-                                                        if (tmp2 < tmp3)
-                                                        {
-                                                            tmp3 = tmp2 - Math.Ceiling(_feeds[k].LineThickness / 2);
-                                                        }
-                                                    }
-                                                }
-                                                else if (i == comparisonLength)
-                                                {
-                                                    if (!_feeds[k].Inverted)
-                                                    {
-                                                        tmp2 = (_maximum - _arrtmp[i - 1]) * valueScale;
-                                                    }
-                                                    else
-                                                    {
-                                                        tmp2 = _arrtmp[i - 1] * valueScale;
-                                                    }
-
-                                                    if (tmp2 > tmp1)
-                                                    {
-                                                        if (tmp2 < tmp3)
-                                                        {
-                                                            tmp3 = tmp2 - Math.Ceiling(_feeds[k].LineThickness / 2);
-                                                        }
-                                                    }
-                                                }
-                                                else
-                                                {
-                                                    tmp3 = e.ClipRectangle.Height;
-                                                }
+                                        double otherEndY = GetFeedYAtIndex(_feeds[k], _arrtmp, comparisonLength, endIndex, valueScale);
+                                        if (otherEndY > tmp2)
+                                        {
+                                            double candidate = otherEndY - Math.Ceiling(_feeds[k].LineThickness / 2);
+                                            if (candidate < fillBottomEnd)
+                                            {
+                                                fillBottomEnd = candidate;
                                             }
                                         }
                                     }
                                 }
 
-                                // draw the filling line under the data point
-                                  e.Graphics.DrawLine(fp,
-                                      e.ClipRectangle.Width - ((feedLength - (i+1)) * _gridintervalx),
-                                      Convert.ToInt32(tmp1),
-                                      e.ClipRectangle.Width - ((feedLength - (i+1)) * _gridintervalx),
-                                      Convert.ToInt32(tmp3));
+                                PointF[] fillPolygon = new[]
+                                {
+                                    new PointF(segmentStartX, (float)tmp1),
+                                    new PointF(segmentEndX, (float)tmp2),
+                                    new PointF(segmentEndX, (float)Math.Max(tmp2, fillBottomEnd)),
+                                    new PointF(segmentStartX, (float)Math.Max(tmp1, fillBottomStart))
+                                };
+
+                                e.Graphics.FillPolygon(fb, fillPolygon);
                             }
 
                         }
@@ -895,7 +876,7 @@ namespace GabTracker
 
                         //release resources
                         p.Dispose();
-                        fp.Dispose();
+                        fb.Dispose();
                         sb.Dispose();
                     }
 
@@ -1077,6 +1058,18 @@ namespace GabTracker
                 Pen p = new Pen(_fillcolor, _fillthickness);
                 p.DashStyle = _filldashstyle;
                 return p;
+            }
+        }
+
+        /// <summary>
+        /// Retrieve the Brush used to fill under the line.
+        /// </summary>
+        [Browsable(false)]
+        internal SolidBrush FillBrush
+        {
+            get
+            {
+                return new SolidBrush(_fillcolor);
             }
         }
 
