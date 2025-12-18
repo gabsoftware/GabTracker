@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
 namespace GabTracker
@@ -654,6 +655,7 @@ namespace GabTracker
             
             try
             {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
                 //background
                 e.Graphics.FillRectangle(this._backbrush, e.ClipRectangle);
 
@@ -798,14 +800,16 @@ namespace GabTracker
 
                             float segmentStartX = e.ClipRectangle.Width - ((feedLength - (i + 1)) * _gridintervalx);
                             float segmentEndX = segmentStartX - _gridintervalx;
+                            float segmentStartY = (float)tmp1;
+                            float segmentEndY = (float)tmp2;
 
                             //draw the line between the two current points of data
                             e.Graphics.DrawLine(
                                 p,
                                 segmentStartX,
-                                Convert.ToInt32(tmp1),
+                                segmentStartY,
                                 segmentEndX,
-                                Convert.ToInt32(tmp2));
+                                segmentEndY);
 
                             if (feed.FillUnder)
                             {
