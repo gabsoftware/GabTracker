@@ -1,9 +1,9 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GabTracker", "GabTracker\GabTracker.csproj", "{902445D6-A2D4-4833-A5F0-3B808560D892}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GabTracker", "GabTracker\GabTracker.csproj", "{902445D6-A2D4-4833-A5F0-3B808560D892}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GabTrackerTest", "GabTrackerTest\GabTrackerTest.csproj", "{183E60A2-84C1-4C27-9F29-4532173B9375}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GabTrackerTest", "GabTrackerTest\GabTrackerTest.csproj", "{183E60A2-84C1-4C27-9F29-4532173B9375}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
