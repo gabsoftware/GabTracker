@@ -20,6 +20,8 @@ namespace GabTracker
         private double _gridoffsetx = 0;
         private double[] _arrtmp = { };
         bool _haserror = false;
+        private static readonly Color DefaultGridColor = Color.FromArgb(0, 75, 0);
+        private static readonly Color DefaultGridThickerColor = Color.FromArgb(0, 75, 0);
 
         private static void EnsureBufferCapacity(ref double[] buffer, int requiredSize)
         {
@@ -87,7 +89,7 @@ namespace GabTracker
             }
         }
 
-        private Color _gridcolor = Color.FromArgb(0, 75, 0);
+        private Color _gridcolor = DefaultGridColor;
         /// <summary>
         /// The color of the grid.
         /// </summary>
@@ -116,14 +118,14 @@ namespace GabTracker
         }
         internal bool ShouldSerializeGridColor()
         {
-            return _gridcolor != null;
+            return _gridcolor != DefaultGridColor;
         }
         internal void ResetGridColor()
         {
-            GridColor = Color.FromArgb(0, 75, 0);
+            GridColor = DefaultGridColor;
         }
 
-        private Color _gridthickercolor = Color.FromArgb(0, 75, 0);
+        private Color _gridthickercolor = DefaultGridThickerColor;
         /// <summary>
         /// The color of the thicker grid.
         /// </summary>
@@ -152,11 +154,11 @@ namespace GabTracker
         }
         internal bool ShouldSerializeGridThickerColor()
         {
-            return _gridthickercolor != null;
+            return _gridthickercolor != DefaultGridThickerColor;
         }
         internal void ResetGridThickerColor()
         {
-            GridThickerColor = Color.FromArgb(0, 75, 0);
+            GridThickerColor = DefaultGridThickerColor;
         }
 
         private float _gridthickness = 1;
