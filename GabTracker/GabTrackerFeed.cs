@@ -345,117 +345,33 @@ namespace GabTracker
         /// <summary>
         /// Initializes a new instance of GabTrackerFeed.
         /// </summary>
-        public GabTrackerFeed(Color color)
-            : this()
+        public GabTrackerFeed(
+            Color color,
+            float thickness = 1f,
+            bool inverted = false,
+            double coefficient = 1.0,
+            string unit = "",
+            DashStyle dashstyle = DashStyle.Solid,
+            bool fillunder = false,
+            byte fillalpha = 255,
+            float fillthickness = 1f,
+            DashStyle filldashstyle = DashStyle.Solid,
+            bool fillsuperpose = false,
+            string legend = "",
+            bool fillstopotherfeeds = true)
         {
             LineColor = color;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of GabTrackerFeed.
-        /// </summary>
-        public GabTrackerFeed(Color color, float thickness)
-            : this(color)
-        {
             LineThickness = thickness;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of GabTrackerFeed.
-        /// </summary>
-        public GabTrackerFeed(Color color, float thickness, bool inverted)
-            : this(color, thickness)
-        {
             Inverted = inverted;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of GabTrackerFeed.
-        /// </summary>
-        public GabTrackerFeed(Color color, float thickness, bool inverted, double coefficient)
-            : this(color, thickness, inverted)
-        {
             Coefficient = coefficient;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of GabTrackerFeed.
-        /// </summary>
-        public GabTrackerFeed(Color color, float thickness, bool inverted, double coefficient, string unit)
-            : this(color, thickness, inverted, coefficient)
-        {
             Unit = unit;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of GabTrackerFeed.
-        /// </summary>
-        public GabTrackerFeed(Color color, float thickness, bool inverted, double coefficient, string unit, DashStyle dashstyle)
-            : this(color, thickness, inverted, coefficient, unit)
-        {
             LineDashStyle = dashstyle;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of GabTrackerFeed.
-        /// </summary>
-        public GabTrackerFeed(Color color, float thickness, bool inverted, double coefficient, string unit, DashStyle dashstyle, bool fillunder)
-            : this(color, thickness, inverted, coefficient, unit, dashstyle)
-        {
             FillUnder = fillunder;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of GabTrackerFeed.
-        /// </summary>
-        public GabTrackerFeed(Color color, float thickness, bool inverted, double coefficient, string unit, DashStyle dashstyle, bool fillunder, Byte fillalpha)
-            : this(color, thickness, inverted, coefficient, unit, dashstyle, fillunder)
-        {
             FillAlpha = fillalpha;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of GabTrackerFeed.
-        /// </summary>
-        public GabTrackerFeed(Color color, float thickness, bool inverted, double coefficient, string unit, DashStyle dashstyle, bool fillunder, Byte fillalpha, float fillthickness)
-            : this(color, thickness, inverted, coefficient, unit, dashstyle, fillunder, fillalpha)
-        {
             FillThickness = fillthickness;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of GabTrackerFeed.
-        /// </summary>
-        public GabTrackerFeed(Color color, float thickness, bool inverted, double coefficient, string unit, DashStyle dashstyle, bool fillunder, Byte fillalpha, float fillthickness, DashStyle filldashstyle)
-            : this(color, thickness, inverted, coefficient, unit, dashstyle, fillunder, fillalpha, fillthickness)
-        {
             FillDashStyle = filldashstyle;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of GabTrackerFeed.
-        /// </summary>
-        public GabTrackerFeed(Color color, float thickness, bool inverted, double coefficient, string unit, DashStyle dashstyle, bool fillunder, Byte fillalpha, float fillthickness, DashStyle filldashstyle, bool fillsuperpose)
-            : this(color, thickness, inverted, coefficient, unit, dashstyle, fillunder, fillalpha, fillthickness, filldashstyle)
-        {
             FillSuperpose = fillsuperpose;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of GabTrackerFeed.
-        /// </summary>
-        public GabTrackerFeed(Color color, float thickness, bool inverted, double coefficient, string unit, DashStyle dashstyle, bool fillunder, Byte fillalpha, float fillthickness, DashStyle filldashstyle, bool fillsuperpose, string legend)
-            : this(color, thickness, inverted, coefficient, unit, dashstyle, fillunder, fillalpha, fillthickness, filldashstyle, fillsuperpose)
-        {
             Legend = legend;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of GabTrackerFeed.
-        /// </summary>
-        public GabTrackerFeed(Color color, float thickness, bool inverted, double coefficient, string unit, DashStyle dashstyle, bool fillunder, Byte fillalpha, float fillthickness, DashStyle filldashstyle, bool fillsuperpose, string legend, bool fillstopotherfeeds)
-            : this(color, thickness, inverted, coefficient, unit, dashstyle, fillunder, fillalpha, fillthickness, filldashstyle, fillsuperpose, legend)
-        {
             FillStopOtherFeeds = fillstopotherfeeds;
         }
     }
