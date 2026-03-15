@@ -21,6 +21,7 @@ namespace GabTracker
         private double _gridoffsetx = 0;
         private double[] _arrtmp = { };
         bool _haserror = false;
+        private readonly object _dataLock = new object();
         private static readonly Color DefaultGridColor = Color.FromArgb(0, 75, 0);
         private static readonly Color DefaultGridThickerColor = Color.FromArgb(0, 75, 0);
 
@@ -741,7 +742,7 @@ namespace GabTracker
                 double valueScale = range != 0 ? (double)e.ClipRectangle.Height / range : 0d;
 
                 //feed lines
-                lock (_feeds)
+                lock (_dataLock)
                 {
                     //for each feed in the tracker
                     foreach (GabTrackerFeed feed in _feeds)
@@ -954,24 +955,27 @@ namespace GabTracker
         {
             double value;
 
-            //for each feed
-            foreach (GabTrackerFeed feed in _feeds)
+            lock (_dataLock)
             {
-                if (feed.Data == null)
+                //for each feed
+                foreach (GabTrackerFeed feed in _feeds)
                 {
-                    continue;
-                }
+                    if (feed.Data == null)
+                    {
+                        continue;
+                    }
 
-                //compute the new value
-                value = feed.Value * feed.Coefficient;
+                    //compute the new value
+                    value = feed.Value * feed.Coefficient;
 
-                //add the new value in the queue
-                feed.Data.Enqueue(value);
-                
-                //remove the superfluous data
-                while (feed.Data.Count >= _maxdatainmemory)
-                {
-                    feed.Data.Dequeue();
+                    //add the new value in the queue
+                    feed.Data.Enqueue(value);
+
+                    //remove the superfluous data
+                    while (feed.Data.Count >= _maxdatainmemory)
+                    {
+                        feed.Data.Dequeue();
+                    }
                 }
             }
             if (_render) //if Render is set to true, we force the control to repaint itself
