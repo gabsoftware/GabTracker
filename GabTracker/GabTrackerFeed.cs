@@ -71,7 +71,6 @@ namespace GabTracker
             {
                 _linecolor = value;
                 _fillcolor = Color.FromArgb(_fillalpha, value);
-                _needrefresh = true;
             }
         }
 
@@ -92,7 +91,6 @@ namespace GabTracker
             set
             {
                 _linethickness = value;
-                _needrefresh = true;
             }
         }
 
@@ -113,7 +111,6 @@ namespace GabTracker
             set
             {
                 _fillthickness = value;
-                _needrefresh = true;
             }
         }
 
@@ -134,7 +131,6 @@ namespace GabTracker
             set
             {
                 _linedashstyle = value;
-                _needrefresh = true;
             }
         }
 
@@ -155,26 +151,6 @@ namespace GabTracker
             set
             {
                 _filldashstyle = value;
-                _needrefresh = true;
-            }
-        }
-
-        private bool _needrefresh = false;
-        /// <summary>
-        /// Set to true to force the Tracker to refresh.
-        /// </summary>
-        [Browsable(false)]
-        [DefaultValue(false)]
-        public bool NeedRefresh
-        {
-            get
-            {
-                if (_needrefresh)
-                {
-                    _needrefresh = false;
-                    return true;
-                }
-                return false;
             }
         }
 
@@ -291,7 +267,6 @@ namespace GabTracker
             {
                 _fillalpha = value;
                 _fillcolor = Color.FromArgb(value, _linecolor);
-                _needrefresh = true;
             }
         }
 

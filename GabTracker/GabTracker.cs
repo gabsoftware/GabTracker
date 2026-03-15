@@ -785,19 +785,6 @@ namespace GabTracker
                                 }
                             }
 
-                            //if we need to refresh the control
-                            if (feed.NeedRefresh)
-                            {
-                                p.Dispose();
-                                p = feed.LinePen;
-
-                                fb.Dispose();
-                                fb = feed.FillBrush;
-
-                                sb.Dispose();
-                                sb = new SolidBrush(feed.LineColor);
-                            }
-
                             float segmentStartX = e.ClipRectangle.Width - ((feedLength - (i + 1)) * _gridintervalx);
                             float segmentEndX = segmentStartX - _gridintervalx;
                             float segmentStartY = (float)tmp1;
