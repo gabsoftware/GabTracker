@@ -720,7 +720,7 @@ namespace GabTracker
 
                         p = feed.LinePen;
                         fb = feed.FillBrush;
-                        sb = new SolidBrush(feed.LineColor);
+                        sb = feed.LineBrush;
                         
                         //for each value in the feed data
                         for (int i = 0; i < feedLength; i++)
@@ -830,11 +830,6 @@ namespace GabTracker
                             e.ClipRectangle.Width - (e.Graphics.MeasureString(tmpstr, this.Font).Width) - _unitmargin,
                             (float)tmp1 + _unitmargin,
                             StringFormat.GenericDefault);
-
-                        //release resources
-                        p.Dispose();
-                        fb.Dispose();
-                        sb.Dispose();
                     }
 
                     //if legend should be drawn then
@@ -874,7 +869,7 @@ namespace GabTracker
                         //legend drawing
                         for (int n = 0; n < _feeds.Count; n++)
                         {
-                            sb = new SolidBrush(_feeds[n].LineColor);
+                            sb = _feeds[n].LineBrush;
                             p = _feeds[n].LinePen;
 
                             tmpstr = _feeds[n].Legend == String.Empty ? "(not set)" : _feeds[n].Legend;
@@ -894,8 +889,6 @@ namespace GabTracker
                                 _unitmargin * 5,
                                 Convert.ToInt32(tmp3),
                                 StringFormat.GenericDefault);
-                            sb.Dispose();
-                            p.Dispose();
                         }
                     }
                 }

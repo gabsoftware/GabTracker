@@ -9,9 +9,31 @@ namespace GabTracker
     /// <summary>
     /// Represents the data for a line of GabTracker
     /// </summary>
-    public class GabTrackerFeed
+    public class GabTrackerFeed : IDisposable
     {
         internal Color _fillcolor = Color.YellowGreen;
+
+        private Pen _cachedLinePen;
+        private SolidBrush _cachedFillBrush;
+        private SolidBrush _cachedLineBrush;
+
+        private void InvalidateLinePen()
+        {
+            _cachedLinePen?.Dispose();
+            _cachedLinePen = null;
+        }
+
+        private void InvalidateFillBrush()
+        {
+            _cachedFillBrush?.Dispose();
+            _cachedFillBrush = null;
+        }
+
+        private void InvalidateLineBrush()
+        {
+            _cachedLineBrush?.Dispose();
+            _cachedLineBrush = null;
+        }
 
         /// <summary>
         /// Retrieve the Pen used to draw the line.
@@ -21,9 +43,12 @@ namespace GabTracker
         {
             get
             {
-                Pen p = new Pen(_linecolor, _linethickness);
-                p.DashStyle = _linedashstyle;
-                return p;
+                if (_cachedLinePen == null)
+                {
+                    _cachedLinePen = new Pen(_linecolor, _linethickness);
+                    _cachedLinePen.DashStyle = _linedashstyle;
+                }
+                return _cachedLinePen;
             }
         }
 
@@ -35,8 +60,35 @@ namespace GabTracker
         {
             get
             {
-                return new SolidBrush(_fillcolor);
+                if (_cachedFillBrush == null)
+                {
+                    _cachedFillBrush = new SolidBrush(_fillcolor);
+                }
+                return _cachedFillBrush;
             }
+        }
+
+        /// <summary>
+        /// Retrieve the Brush used to draw the line color (text and legend).
+        /// </summary>
+        [Browsable(false)]
+        internal SolidBrush LineBrush
+        {
+            get
+            {
+                if (_cachedLineBrush == null)
+                {
+                    _cachedLineBrush = new SolidBrush(_linecolor);
+                }
+                return _cachedLineBrush;
+            }
+        }
+
+        public void Dispose()
+        {
+            _cachedLinePen?.Dispose();
+            _cachedFillBrush?.Dispose();
+            _cachedLineBrush?.Dispose();
         }
 
         private Color _linecolor = Color.YellowGreen;
@@ -57,6 +109,9 @@ namespace GabTracker
             {
                 _linecolor = value;
                 _fillcolor = Color.FromArgb(_fillalpha, value);
+                InvalidateLinePen();
+                InvalidateFillBrush();
+                InvalidateLineBrush();
             }
         }
 
@@ -77,6 +132,7 @@ namespace GabTracker
             set
             {
                 _linethickness = value;
+                InvalidateLinePen();
             }
         }
 
@@ -117,6 +173,7 @@ namespace GabTracker
             set
             {
                 _linedashstyle = value;
+                InvalidateLinePen();
             }
         }
 
@@ -253,6 +310,7 @@ namespace GabTracker
             {
                 _fillalpha = value;
                 _fillcolor = Color.FromArgb(value, _linecolor);
+                InvalidateFillBrush();
             }
         }
 
