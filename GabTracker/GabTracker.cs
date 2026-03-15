@@ -20,6 +20,7 @@ namespace GabTracker
         private int _gridoffsetx = 0;
         private double[][] _snapshots = Array.Empty<double[]>();
         private int[] _snapshotLengths = Array.Empty<int>();
+        private readonly PointF[] _fillPolygon = new PointF[4];
         private readonly object _dataLock = new object();
         private static readonly Color DefaultGridColor = Color.FromArgb(0, 75, 0);
         private static readonly Color DefaultGridThickerColor = Color.FromArgb(0, 75, 0);
@@ -819,15 +820,12 @@ namespace GabTracker
                                 }
                             }
 
-                            PointF[] fillPolygon = new[]
-                            {
-                                new PointF(segmentStartX, (float)tmp1),
-                                new PointF(segmentEndX, (float)tmp2),
-                                new PointF(segmentEndX, (float)Math.Max(tmp2, fillBottomEnd)),
-                                new PointF(segmentStartX, (float)Math.Max(tmp1, fillBottomStart))
-                            };
+                            _fillPolygon[0] = new PointF(segmentStartX, (float)tmp1);
+                            _fillPolygon[1] = new PointF(segmentEndX, (float)tmp2);
+                            _fillPolygon[2] = new PointF(segmentEndX, (float)Math.Max(tmp2, fillBottomEnd));
+                            _fillPolygon[3] = new PointF(segmentStartX, (float)Math.Max(tmp1, fillBottomStart));
 
-                            e.Graphics.FillPolygon(fb, fillPolygon);
+                            e.Graphics.FillPolygon(fb, _fillPolygon);
                         }
                     }
 
