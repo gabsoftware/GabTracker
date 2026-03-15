@@ -18,9 +18,8 @@ namespace GabTracker
         private Pen _gridpen;
         private Pen _gridthickerpen;
         private double[] _arrdata = { };
-        private double _gridoffsetx = 0;
+        private int _gridoffsetx = 0;
         private double[] _arrtmp = { };
-        bool _haserror = false;
         private readonly object _dataLock = new object();
         private static readonly Color DefaultGridColor = Color.FromArgb(0, 75, 0);
         private static readonly Color DefaultGridThickerColor = Color.FromArgb(0, 75, 0);
@@ -594,23 +593,22 @@ namespace GabTracker
 
         #endregion
 
-/*        #region == Events ==
+        #region == Events ==
 
-        // Declare the delegate (if using non-generic pattern).
-        public delegate void TickEventHandler(object sender, EventArgs e);
+        /// <summary>
+        /// Raised when an unhandled exception occurs during painting.
+        /// </summary>
+        public event EventHandler<PaintErrorEventArgs> PaintError;
 
-        // Declare the event.
-        public event TickEventHandler Tick;
-
-        // Wrap the event in a protected virtual method
-        // to enable derived classes to raise the event.
-        protected virtual void onTick()
+        /// <summary>
+        /// Raises the PaintError event.
+        /// </summary>
+        protected virtual void OnPaintError(PaintErrorEventArgs e)
         {
-            // Raise the event by using the () operator.
-            Tick?.Invoke(this, new EventArgs());
+            PaintError?.Invoke(this, e);
         }
 
-        #endregion*/
+        #endregion
 
         /// <summary>
         /// Initialize a new instance of GabTracker.
@@ -892,15 +890,10 @@ namespace GabTracker
                         }
                     }
                 }
-                _haserror = false; //reset the error flag
             }
             catch (Exception ex)
             {
-                if (!_haserror)
-                {
-                    _haserror = true;
-                    MessageBox.Show(ex.ToString());
-                }                
+                OnPaintError(new PaintErrorEventArgs(ex));
             }
         }
 
