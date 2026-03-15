@@ -830,7 +830,7 @@ namespace GabTracker
                     }
 
                     //generate the string for the line unit
-                    tmpstr = feed.ValueString + (feed.Unit == string.Empty ? String.Empty : " " + feed.Unit);
+                    tmpstr = feed.LabelString;
                     e.Graphics.DrawString(
                         tmpstr,
                         this.Font,

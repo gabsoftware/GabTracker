@@ -316,6 +316,7 @@ namespace GabTracker
 
         private double _value = 0;
         private string _valueString = "0";
+        private string _labelString = "0";
         /// <summary>
         /// Get or set the current value of the line.
         /// </summary>
@@ -333,6 +334,7 @@ namespace GabTracker
             {
                 _value = value;
                 _valueString = value.ToString();
+                _labelString = _unit == String.Empty ? _valueString : _valueString + " " + _unit;
             }
         }
 
@@ -341,6 +343,12 @@ namespace GabTracker
         /// </summary>
         [Browsable(false)]
         internal string ValueString => _valueString;
+
+        /// <summary>
+        /// The cached label string combining Value and Unit.
+        /// </summary>
+        [Browsable(false)]
+        internal string LabelString => _labelString;
 
         private double _coefficient = 1;
         /// <summary>
@@ -378,6 +386,7 @@ namespace GabTracker
             set
             {
                 _unit = value;
+                _labelString = value == String.Empty ? _valueString : _valueString + " " + value;
             }
         }
 
