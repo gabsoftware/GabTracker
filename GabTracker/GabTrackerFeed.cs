@@ -321,7 +321,7 @@ namespace GabTracker
         [Category("Feed")]
         [Description("Get or set the current value of the line.")]
         [Browsable(true)]
-        [DefaultValue(1)]
+        [DefaultValue(0)]
         public double Value
         {
             get
