@@ -28,20 +28,6 @@ namespace GabTracker
         }
 
         /// <summary>
-        /// Retrieve the Pen used to fill under the line.
-        /// </summary>
-        [Browsable(false)]
-        internal Pen FillPen
-        {
-            get
-            {
-                Pen p = new Pen(_fillcolor, _fillthickness);
-                p.DashStyle = _filldashstyle;
-                return p;
-            }
-        }
-
-        /// <summary>
         /// Retrieve the Brush used to fill under the line.
         /// </summary>
         [Browsable(false)]
