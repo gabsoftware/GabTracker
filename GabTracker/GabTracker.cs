@@ -830,7 +830,7 @@ namespace GabTracker
                     }
 
                     //generate the string for the line unit
-                    tmpstr = feed.Value.ToString() + (feed.Unit == string.Empty ? String.Empty : " " + feed.Unit);
+                    tmpstr = feed.ValueString + (feed.Unit == string.Empty ? String.Empty : " " + feed.Unit);
                     e.Graphics.DrawString(
                         tmpstr,
                         this.Font,
@@ -851,15 +851,14 @@ namespace GabTracker
                         for (int n = 0; n < _feeds.Count; n++)
                         {
                             tmpstr = _feeds[n].Legend == String.Empty ? "(not set)" : _feeds[n].Legend;
-                            tmp3 = e.Graphics.MeasureString(tmpstr, this.Font).Width;
-                            if (tmp3 > tmp1)
+                            SizeF legendSize = e.Graphics.MeasureString(tmpstr, this.Font);
+                            if (legendSize.Width > tmp1)
                             {
-                                tmp1 = tmp3;
+                                tmp1 = legendSize.Width;
                             }
-                            tmp3 = e.Graphics.MeasureString(tmpstr, this.Font).Height;
-                            if (tmp3 > tmp2)
+                            if (legendSize.Height > tmp2)
                             {
-                                tmp2 = tmp3;
+                                tmp2 = legendSize.Height;
                             }
                         }
 

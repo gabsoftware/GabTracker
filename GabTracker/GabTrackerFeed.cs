@@ -315,6 +315,7 @@ namespace GabTracker
         }
 
         private double _value = 0;
+        private string _valueString = "0";
         /// <summary>
         /// Get or set the current value of the line.
         /// </summary>
@@ -331,8 +332,15 @@ namespace GabTracker
             set
             {
                 _value = value;
+                _valueString = value.ToString();
             }
         }
+
+        /// <summary>
+        /// The cached string representation of Value.
+        /// </summary>
+        [Browsable(false)]
+        internal string ValueString => _valueString;
 
         private double _coefficient = 1;
         /// <summary>
