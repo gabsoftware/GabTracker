@@ -17,9 +17,9 @@ namespace GabTracker
         private SolidBrush _backbrush = new SolidBrush(Color.Black);
         private Pen _gridpen;
         private Pen _gridthickerpen;
-        private double[] _arrdata = { };
         private int _gridoffsetx = 0;
-        private double[] _arrtmp = { };
+        private double[][] _snapshots = Array.Empty<double[]>();
+        private int[] _snapshotLengths = Array.Empty<int>();
         private readonly object _dataLock = new object();
         private static readonly Color DefaultGridColor = Color.FromArgb(0, 75, 0);
         private static readonly Color DefaultGridThickerColor = Color.FromArgb(0, 75, 0);
@@ -704,134 +704,146 @@ namespace GabTracker
                 double range = _maximum - _minimum;
                 double valueScale = range != 0 ? (double)e.ClipRectangle.Height / range : 0d;
 
-                //feed lines
+                //snapshot feed data under lock, then paint without holding it
                 lock (_dataLock)
                 {
-                    //for each feed in the tracker
-                    foreach (GabTrackerFeed feed in _feeds)
+                    if (_snapshots.Length < _feeds.Count)
                     {
-                        int feedLength = CopyFeedData(feed.Data, ref _arrdata);
-                        if (feedLength == 0)
+                        Array.Resize(ref _snapshots, _feeds.Count);
+                        Array.Resize(ref _snapshotLengths, _feeds.Count);
+                    }
+                    for (int i = 0; i < _feeds.Count; i++)
+                    {
+                        _snapshotLengths[i] = CopyFeedData(_feeds[i].Data, ref _snapshots[i]);
+                    }
+                }
+
+                //feed lines
+                for (int fi = 0; fi < _feeds.Count; fi++)
+                {
+                    GabTrackerFeed feed = _feeds[fi];
+                    int feedLength = _snapshotLengths[fi];
+
+                    if (feedLength == 0)
+                    {
+                        continue;
+                    }
+
+                    p = feed.LinePen;
+                    fb = feed.FillBrush;
+                    sb = feed.LineBrush;
+
+                    //for each value in the feed data
+                    for (int i = 0; i < feedLength; i++)
+                    {
+                        //if the feed is not inverted, do not invert the Y axis
+                        if (!feed.Inverted)
                         {
-                            continue;
+                            tmp2 = (_maximum - _snapshots[fi][i]) * valueScale;
+                            if (i < feedLength - 1)
+                            {
+                                tmp1 = (_maximum - _snapshots[fi][i + 1]) * valueScale;
+                            }
+                            else
+                            {
+                                tmp1 = tmp2;
+                            }
+                        }
+                        else //we must invert the Y axis
+                        {
+                            tmp2 = _snapshots[fi][i] * valueScale;
+                            if (i < feedLength - 1)
+                            {
+                                tmp1 = _snapshots[fi][i + 1] * valueScale;
+                            }
+                            else
+                            {
+                                tmp1 = tmp2;
+                            }
                         }
 
-                        p = feed.LinePen;
-                        fb = feed.FillBrush;
-                        sb = feed.LineBrush;
-                        
-                        //for each value in the feed data
-                        for (int i = 0; i < feedLength; i++)
+                        float segmentStartX = e.ClipRectangle.Width - ((feedLength - (i + 1)) * _gridintervalx);
+                        float segmentEndX = segmentStartX - _gridintervalx;
+                        float segmentStartY = (float)tmp1;
+                        float segmentEndY = (float)tmp2;
+
+                        //draw the line between the two current points of data
+                        e.Graphics.DrawLine(
+                            p,
+                            segmentStartX,
+                            segmentStartY,
+                            segmentEndX,
+                            segmentEndY);
+
+                        if (feed.FillUnder)
                         {
-                            //if the feed is not inverted, do not invert the Y axis
-                            if (!feed.Inverted)
+                            double fillBottomStart = e.ClipRectangle.Height;
+                            double fillBottomEnd = e.ClipRectangle.Height;
+                            int startIndex = Math.Max(0, Math.Min(feedLength - 1, i + 1));
+                            int endIndex = Math.Max(0, Math.Min(feedLength - 1, i));
+
+                            if (!feed.FillSuperpose)
                             {
-                                tmp2 = (_maximum - _arrdata[i]) * valueScale;
-                                if (i < feedLength - 1)
+                                for (int k = 0; k < _feeds.Count; k++)
                                 {
-                                    tmp1 = (_maximum - _arrdata[i + 1]) * valueScale;
-                                }
-                                else
-                                {
-                                    tmp1 = tmp2;
-                                }
-                            }
-                            else //we must invert the Y axis
-                            {
-                                tmp2 = _arrdata[i] * valueScale;
-                                if (i < feedLength - 1)
-                                {
-                                    tmp1 = _arrdata[i + 1] * valueScale;
-                                }
-                                else
-                                {
-                                    tmp1 = tmp2;
-                                }
-                            }
-
-                            float segmentStartX = e.ClipRectangle.Width - ((feedLength - (i + 1)) * _gridintervalx);
-                            float segmentEndX = segmentStartX - _gridintervalx;
-                            float segmentStartY = (float)tmp1;
-                            float segmentEndY = (float)tmp2;
-
-                            //draw the line between the two current points of data
-                            e.Graphics.DrawLine(
-                                p,
-                                segmentStartX,
-                                segmentStartY,
-                                segmentEndX,
-                                segmentEndY);
-
-                            if (feed.FillUnder)
-                            {
-                                double fillBottomStart = e.ClipRectangle.Height;
-                                double fillBottomEnd = e.ClipRectangle.Height;
-                                int startIndex = Math.Max(0, Math.Min(feedLength - 1, i + 1));
-                                int endIndex = Math.Max(0, Math.Min(feedLength - 1, i));
-
-                                if (!feed.FillSuperpose)
-                                {
-                                    for (int k = 0; k < _feeds.Count; k++)
+                                    if (!_feeds[k].FillStopOtherFeeds || _feeds[k].Equals(feed))
                                     {
-                                        if (!_feeds[k].FillStopOtherFeeds || _feeds[k].Equals(feed))
-                                        {
-                                            continue;
-                                        }
+                                        continue;
+                                    }
 
-                                        int comparisonLength = CopyFeedData(_feeds[k].Data, ref _arrtmp);
-                                        if (comparisonLength == 0)
-                                        {
-                                            continue;
-                                        }
+                                    int comparisonLength = _snapshotLengths[k];
+                                    if (comparisonLength == 0)
+                                    {
+                                        continue;
+                                    }
 
-                                        double otherStartY = GetFeedYAtIndex(_feeds[k], _arrtmp, comparisonLength, startIndex, valueScale);
-                                        if (otherStartY > tmp1)
+                                    double otherStartY = GetFeedYAtIndex(_feeds[k], _snapshots[k], comparisonLength, startIndex, valueScale);
+                                    if (otherStartY > tmp1)
+                                    {
+                                        double candidate = otherStartY - Math.Ceiling(_feeds[k].LineThickness / 2);
+                                        if (candidate < fillBottomStart)
                                         {
-                                            double candidate = otherStartY - Math.Ceiling(_feeds[k].LineThickness / 2);
-                                            if (candidate < fillBottomStart)
-                                            {
-                                                fillBottomStart = candidate;
-                                            }
+                                            fillBottomStart = candidate;
                                         }
+                                    }
 
-                                        double otherEndY = GetFeedYAtIndex(_feeds[k], _arrtmp, comparisonLength, endIndex, valueScale);
-                                        if (otherEndY > tmp2)
+                                    double otherEndY = GetFeedYAtIndex(_feeds[k], _snapshots[k], comparisonLength, endIndex, valueScale);
+                                    if (otherEndY > tmp2)
+                                    {
+                                        double candidate = otherEndY - Math.Ceiling(_feeds[k].LineThickness / 2);
+                                        if (candidate < fillBottomEnd)
                                         {
-                                            double candidate = otherEndY - Math.Ceiling(_feeds[k].LineThickness / 2);
-                                            if (candidate < fillBottomEnd)
-                                            {
-                                                fillBottomEnd = candidate;
-                                            }
+                                            fillBottomEnd = candidate;
                                         }
                                     }
                                 }
-
-                                PointF[] fillPolygon = new[]
-                                {
-                                    new PointF(segmentStartX, (float)tmp1),
-                                    new PointF(segmentEndX, (float)tmp2),
-                                    new PointF(segmentEndX, (float)Math.Max(tmp2, fillBottomEnd)),
-                                    new PointF(segmentStartX, (float)Math.Max(tmp1, fillBottomStart))
-                                };
-
-                                e.Graphics.FillPolygon(fb, fillPolygon);
                             }
 
-                        }
+                            PointF[] fillPolygon = new[]
+                            {
+                                new PointF(segmentStartX, (float)tmp1),
+                                new PointF(segmentEndX, (float)tmp2),
+                                new PointF(segmentEndX, (float)Math.Max(tmp2, fillBottomEnd)),
+                                new PointF(segmentStartX, (float)Math.Max(tmp1, fillBottomStart))
+                            };
 
-                        //generate the string for the line unit
-                        tmpstr = feed.Value.ToString() + (feed.Unit == string.Empty ? String.Empty : " " + feed.Unit);
-                        e.Graphics.DrawString(
-                            tmpstr,
-                            this.Font,
-                            sb,
-                            e.ClipRectangle.Width - (e.Graphics.MeasureString(tmpstr, this.Font).Width) - _unitmargin,
-                            (float)tmp1 + _unitmargin,
-                            StringFormat.GenericDefault);
+                            e.Graphics.FillPolygon(fb, fillPolygon);
+                        }
                     }
 
-                    //if legend should be drawn then
-                    if (_legendvisible)
+                    //generate the string for the line unit
+                    tmpstr = feed.Value.ToString() + (feed.Unit == string.Empty ? String.Empty : " " + feed.Unit);
+                    e.Graphics.DrawString(
+                        tmpstr,
+                        this.Font,
+                        sb,
+                        e.ClipRectangle.Width - (e.Graphics.MeasureString(tmpstr, this.Font).Width) - _unitmargin,
+                        (float)tmp1 + _unitmargin,
+                        StringFormat.GenericDefault);
+                }
+
+                //if legend should be drawn then
+                if (_legendvisible)
                     {                        
                         tmp1 = 0;
                         tmp2 = 0;
@@ -890,7 +902,6 @@ namespace GabTracker
                         }
                     }
                 }
-            }
             catch (Exception ex)
             {
                 OnPaintError(new PaintErrorEventArgs(ex));

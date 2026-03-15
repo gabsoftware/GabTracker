@@ -25,8 +25,8 @@ namespace GabTracker
                 {
                     feed.Dispose();
                 }
-                Array.Clear(_arrdata, 0, _arrdata.Length);
-                Array.Clear(_arrtmp, 0, _arrtmp.Length);
+                _snapshots = null;
+                _snapshotLengths = null;
             }
             base.Dispose(disposing);
         }
