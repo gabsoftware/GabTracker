@@ -969,15 +969,6 @@ namespace GabTracker
                 this.Invalidate();
             }
 
-/*            try
-            {
-                Tick?.Invoke(this, new EventArgs());
-            }
-            catch
-            {
-                
-            }*/
-           
         }
 
         /// <summary>
