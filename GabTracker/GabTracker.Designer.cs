@@ -20,6 +20,7 @@ namespace GabTracker
 
                 _backbrush.Dispose();
                 _gridpen.Dispose();
+                _gridthickerpen.Dispose();
                 Array.Clear(_arrdata, 0, _arrdata.Length);
                 Array.Clear(_arrtmp, 0, _arrtmp.Length);
             }
