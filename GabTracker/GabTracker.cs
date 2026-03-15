@@ -711,33 +711,6 @@ namespace GabTracker
                     }
                 }
 
-                //auto max
-                if (_automax)
-                {
-                    double maxCandidate = _minimum;
-                    foreach (GabTrackerFeed feed in _feeds)
-                    {
-                        if (feed.Data == null)
-                        {
-                            continue;
-                        }
-
-                        foreach (double value in feed.Data)
-                        {
-                            if (value > maxCandidate)
-                            {
-                                maxCandidate = value;
-                            }
-                        }
-                    }
-
-                    double computedMaximum = maxCandidate * (_automaxpercentage / 100d);
-                    if (computedMaximum > _minimum)
-                    {
-                        _maximum = Convert.ToInt32(Math.Ceiling(computedMaximum));
-                    }
-                }
-
                 double range = _maximum - _minimum;
                 double valueScale = range != 0 ? (double)e.ClipRectangle.Height / range : 0d;
 
@@ -975,6 +948,33 @@ namespace GabTracker
                     while (feed.Data.Count >= _maxdatainmemory)
                     {
                         feed.Data.Dequeue();
+                    }
+                }
+
+                //auto max
+                if (_automax)
+                {
+                    double maxCandidate = _minimum;
+                    foreach (GabTrackerFeed feed in _feeds)
+                    {
+                        if (feed.Data == null)
+                        {
+                            continue;
+                        }
+
+                        foreach (double v in feed.Data)
+                        {
+                            if (v > maxCandidate)
+                            {
+                                maxCandidate = v;
+                            }
+                        }
+                    }
+
+                    double computedMaximum = maxCandidate * (_automaxpercentage / 100d);
+                    if (computedMaximum > _minimum)
+                    {
+                        _maximum = Convert.ToInt32(Math.Ceiling(computedMaximum));
                     }
                 }
             }
