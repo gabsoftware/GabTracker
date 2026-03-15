@@ -643,7 +643,7 @@ namespace GabTracker
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        public virtual void GabTracker_Paint(object sender, PaintEventArgs e)
+        protected virtual void GabTracker_Paint(object sender, PaintEventArgs e)
         {
             double tmp1 = 0;
             double tmp2 = 0;
