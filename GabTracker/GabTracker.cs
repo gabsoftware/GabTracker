@@ -688,14 +688,6 @@ namespace GabTracker
                             e.Graphics.DrawLine(this._gridpen, 0, i, e.ClipRectangle.Width, i);
                         }
                     }
-                    if (_gridscroll) //if the grid must be scrolled then
-                    {
-                        _gridoffsetx++;
-                        if (_gridoffsetx >= _gridthickerevery)
-                        {
-                            _gridoffsetx = 0;
-                        }
-                    }
                 }
                 else //we don't have to draw the thicker grid
                 {
@@ -976,6 +968,14 @@ namespace GabTracker
                     {
                         _maximum = Convert.ToInt32(Math.Ceiling(computedMaximum));
                     }
+                }
+            }
+            if (_gridscroll)
+            {
+                _gridoffsetx++;
+                if (_gridoffsetx >= _gridthickerevery)
+                {
+                    _gridoffsetx = 0;
                 }
             }
             if (_render) //if Render is set to true, we force the control to repaint itself
