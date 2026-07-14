@@ -848,6 +848,80 @@ namespace GabTracker
                 double range = TransformValue(effectiveMaximum) - TransformValue(_minimum);
                 double valueScale = range != 0 ? (double)e.ClipRectangle.Height / range : 0d;
 
+                //feed fills
+                for (int fi = 0; fi < _feeds.Count; fi++)
+                {
+                    GabTrackerFeed feed = _feeds[fi];
+                    int feedLength = _snapshotLengths[fi];
+
+                    if (feedLength == 0 || !feed.FillUnder)
+                    {
+                        continue;
+                    }
+
+                    fb = feed.FillBrush;
+
+                    //for each value in the feed data
+                    for (int i = 0; i < feedLength; i++)
+                    {
+                        tmp2 = GetFeedY(feed, _snapshots[fi][i], valueScale, effectiveMaximum);
+                        tmp1 = i < feedLength - 1
+                            ? GetFeedY(feed, _snapshots[fi][i + 1], valueScale, effectiveMaximum)
+                            : tmp2;
+
+                        float segmentStartX = e.ClipRectangle.Width - ((feedLength - (i + 1)) * _gridintervalx);
+                        float segmentEndX = segmentStartX - _gridintervalx;
+                        double fillBottomStart = e.ClipRectangle.Height;
+                        double fillBottomEnd = e.ClipRectangle.Height;
+                        int startIndex = Math.Max(0, Math.Min(feedLength - 1, i + 1));
+                        int endIndex = Math.Max(0, Math.Min(feedLength - 1, i));
+
+                        if (!feed.FillSuperpose)
+                        {
+                            for (int k = 0; k < _feeds.Count; k++)
+                            {
+                                if (!_feeds[k].FillStopOtherFeeds || _feeds[k].Equals(feed))
+                                {
+                                    continue;
+                                }
+
+                                int comparisonLength = _snapshotLengths[k];
+                                if (comparisonLength == 0)
+                                {
+                                    continue;
+                                }
+
+                                double otherStartY = GetFeedYAtIndex(_feeds[k], _snapshots[k], comparisonLength, startIndex, valueScale, effectiveMaximum);
+                                if (otherStartY > tmp1)
+                                {
+                                    double candidate = otherStartY - Math.Ceiling(_feeds[k].LineThickness / 2);
+                                    if (candidate < fillBottomStart)
+                                    {
+                                        fillBottomStart = candidate;
+                                    }
+                                }
+
+                                double otherEndY = GetFeedYAtIndex(_feeds[k], _snapshots[k], comparisonLength, endIndex, valueScale, effectiveMaximum);
+                                if (otherEndY > tmp2)
+                                {
+                                    double candidate = otherEndY - Math.Ceiling(_feeds[k].LineThickness / 2);
+                                    if (candidate < fillBottomEnd)
+                                    {
+                                        fillBottomEnd = candidate;
+                                    }
+                                }
+                            }
+                        }
+
+                        _fillPolygon[0] = new PointF(segmentStartX, (float)tmp1);
+                        _fillPolygon[1] = new PointF(segmentEndX, (float)tmp2);
+                        _fillPolygon[2] = new PointF(segmentEndX, (float)Math.Max(tmp2, fillBottomEnd));
+                        _fillPolygon[3] = new PointF(segmentStartX, (float)Math.Max(tmp1, fillBottomStart));
+
+                        e.Graphics.FillPolygon(fb, _fillPolygon);
+                    }
+                }
+
                 //feed lines
                 for (int fi = 0; fi < _feeds.Count; fi++)
                 {
@@ -860,7 +934,6 @@ namespace GabTracker
                     }
 
                     p = feed.LinePen;
-                    fb = feed.FillBrush;
                     sb = feed.LineBrush;
 
                     //for each value in the feed data
@@ -883,58 +956,6 @@ namespace GabTracker
                             segmentStartY,
                             segmentEndX,
                             segmentEndY);
-
-                        if (feed.FillUnder)
-                        {
-                            double fillBottomStart = e.ClipRectangle.Height;
-                            double fillBottomEnd = e.ClipRectangle.Height;
-                            int startIndex = Math.Max(0, Math.Min(feedLength - 1, i + 1));
-                            int endIndex = Math.Max(0, Math.Min(feedLength - 1, i));
-
-                            if (!feed.FillSuperpose)
-                            {
-                                for (int k = 0; k < _feeds.Count; k++)
-                                {
-                                    if (!_feeds[k].FillStopOtherFeeds || _feeds[k].Equals(feed))
-                                    {
-                                        continue;
-                                    }
-
-                                    int comparisonLength = _snapshotLengths[k];
-                                    if (comparisonLength == 0)
-                                    {
-                                        continue;
-                                    }
-
-                                    double otherStartY = GetFeedYAtIndex(_feeds[k], _snapshots[k], comparisonLength, startIndex, valueScale, effectiveMaximum);
-                                    if (otherStartY > tmp1)
-                                    {
-                                        double candidate = otherStartY - Math.Ceiling(_feeds[k].LineThickness / 2);
-                                        if (candidate < fillBottomStart)
-                                        {
-                                            fillBottomStart = candidate;
-                                        }
-                                    }
-
-                                    double otherEndY = GetFeedYAtIndex(_feeds[k], _snapshots[k], comparisonLength, endIndex, valueScale, effectiveMaximum);
-                                    if (otherEndY > tmp2)
-                                    {
-                                        double candidate = otherEndY - Math.Ceiling(_feeds[k].LineThickness / 2);
-                                        if (candidate < fillBottomEnd)
-                                        {
-                                            fillBottomEnd = candidate;
-                                        }
-                                    }
-                                }
-                            }
-
-                            _fillPolygon[0] = new PointF(segmentStartX, (float)tmp1);
-                            _fillPolygon[1] = new PointF(segmentEndX, (float)tmp2);
-                            _fillPolygon[2] = new PointF(segmentEndX, (float)Math.Max(tmp2, fillBottomEnd));
-                            _fillPolygon[3] = new PointF(segmentStartX, (float)Math.Max(tmp1, fillBottomStart));
-
-                            e.Graphics.FillPolygon(fb, _fillPolygon);
-                        }
                     }
 
                     //generate the string for the line unit
