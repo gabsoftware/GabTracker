@@ -14,6 +14,12 @@ namespace GabTracker
     [ToolboxBitmap(typeof(GabTracker), "Resources.icon_16x16.png")]
     public partial class GabTracker : UserControl
     {
+        public enum ValueScaleMode
+        {
+            Linear,
+            Logarithmic
+        }
+
         private SolidBrush _backbrush = new SolidBrush(Color.Black);
         private Pen _gridpen;
         private Pen _gridthickerpen;
@@ -25,6 +31,12 @@ namespace GabTracker
         private static readonly Color DefaultGridColor = Color.FromArgb(0, 75, 0);
         private static readonly Color DefaultGridThickerColor = Color.FromArgb(0, 75, 0);
         private bool _autoStart = true;
+        private ValueScaleMode _valueScaleMode = ValueScaleMode.Linear;
+
+        /// <summary>
+        /// Raised immediately before the tracker appends current feed values to its graph data.
+        /// </summary>
+        public event EventHandler CurrentValuesNeeded;
 
         private static void EnsureBufferCapacity(ref double[] buffer, int requiredSize)
         {
@@ -46,12 +58,44 @@ namespace GabTracker
             return source.Count;
         }
 
-        private double GetFeedY(GabTrackerFeed feed, double rawValue, double valueScale)
+        private double GetFeedY(GabTrackerFeed feed, double rawValue, double valueScale, double maximum)
         {
-            return feed.Inverted ? rawValue * valueScale : (_maximum - rawValue) * valueScale;
+            double transformedValue = TransformValue(rawValue);
+            double transformedMinimum = TransformValue(_minimum);
+            double transformedMaximum = TransformValue(maximum);
+
+            return feed.Inverted
+                ? (transformedValue - transformedMinimum) * valueScale
+                : (transformedMaximum - transformedValue) * valueScale;
         }
 
-        private double GetFeedYAtIndex(GabTrackerFeed feed, double[] buffer, int bufferLength, int dataIndex, double valueScale)
+        private double TransformValue(double value)
+        {
+            value = Math.Max(_minimum, value);
+
+            if (_valueScaleMode == ValueScaleMode.Logarithmic)
+            {
+                double shiftedValue = Math.Max(0d, value - _minimum);
+                return Math.Log10(shiftedValue + 1d);
+            }
+
+            return value;
+        }
+
+        private static double ClampY(double y, Rectangle bounds, SizeF elementSize)
+        {
+            double minY = bounds.Top;
+            double maxY = bounds.Bottom - elementSize.Height;
+
+            if (maxY < minY)
+            {
+                return minY;
+            }
+
+            return Math.Max(minY, Math.Min(maxY, y));
+        }
+
+        private double GetFeedYAtIndex(GabTrackerFeed feed, double[] buffer, int bufferLength, int dataIndex, double valueScale, double maximum)
         {
             if (bufferLength == 0)
             {
@@ -59,7 +103,7 @@ namespace GabTracker
             }
 
             int clampedIndex = Math.Max(0, Math.Min(bufferLength - 1, dataIndex));
-            return GetFeedY(feed, buffer[clampedIndex], valueScale);
+            return GetFeedY(feed, buffer[clampedIndex], valueScale, maximum);
         }
 
 
@@ -467,6 +511,26 @@ namespace GabTracker
             }
         }
 
+        /// <summary>
+        /// The vertical scale transformation used when rendering feed values.
+        /// </summary>
+        [Category("Tracker Data")]
+        [Description("The vertical scale transformation used when rendering feed values.")]
+        [Browsable(true)]
+        [DefaultValue(ValueScaleMode.Linear)]
+        public ValueScaleMode ScaleMode
+        {
+            get
+            {
+                return _valueScaleMode;
+            }
+            set
+            {
+                _valueScaleMode = value;
+                Invalidate();
+            }
+        }
+
         private int _maxdatainmemory = 100;
         /// <summary>
         /// The maximum amount of values each line feed should contain. Ideally, this value should be set depending on the width of the control. Do not set a too high value to preserve system resources.
@@ -744,9 +808,6 @@ namespace GabTracker
                     }
                 }
 
-                double range = _maximum - _minimum;
-                double valueScale = range != 0 ? (double)e.ClipRectangle.Height / range : 0d;
-
                 //snapshot feed data under lock, then paint without holding it
                 lock (_dataLock)
                 {
@@ -760,6 +821,32 @@ namespace GabTracker
                         _snapshotLengths[i] = CopyFeedData(_feeds[i].Data, ref _snapshots[i]);
                     }
                 }
+
+                double effectiveMaximum = _maximum;
+                if (_automax)
+                {
+                    double maxCandidate = _minimum;
+                    for (int fi = 0; fi < _snapshotLengths.Length; fi++)
+                    {
+                        for (int i = 0; i < _snapshotLengths[fi]; i++)
+                        {
+                            if (_snapshots[fi][i] > maxCandidate)
+                            {
+                                maxCandidate = _snapshots[fi][i];
+                            }
+                        }
+                    }
+
+                    if (maxCandidate > _minimum)
+                    {
+                        effectiveMaximum = _valueScaleMode == ValueScaleMode.Logarithmic
+                            ? maxCandidate
+                            : Math.Ceiling(maxCandidate * (_automaxpercentage / 100d));
+                    }
+                }
+
+                double range = TransformValue(effectiveMaximum) - TransformValue(_minimum);
+                double valueScale = range != 0 ? (double)e.ClipRectangle.Height / range : 0d;
 
                 //feed lines
                 for (int fi = 0; fi < _feeds.Count; fi++)
@@ -779,31 +866,10 @@ namespace GabTracker
                     //for each value in the feed data
                     for (int i = 0; i < feedLength; i++)
                     {
-                        //if the feed is not inverted, do not invert the Y axis
-                        if (!feed.Inverted)
-                        {
-                            tmp2 = (_maximum - _snapshots[fi][i]) * valueScale;
-                            if (i < feedLength - 1)
-                            {
-                                tmp1 = (_maximum - _snapshots[fi][i + 1]) * valueScale;
-                            }
-                            else
-                            {
-                                tmp1 = tmp2;
-                            }
-                        }
-                        else //we must invert the Y axis
-                        {
-                            tmp2 = _snapshots[fi][i] * valueScale;
-                            if (i < feedLength - 1)
-                            {
-                                tmp1 = _snapshots[fi][i + 1] * valueScale;
-                            }
-                            else
-                            {
-                                tmp1 = tmp2;
-                            }
-                        }
+                        tmp2 = GetFeedY(feed, _snapshots[fi][i], valueScale, effectiveMaximum);
+                        tmp1 = i < feedLength - 1
+                            ? GetFeedY(feed, _snapshots[fi][i + 1], valueScale, effectiveMaximum)
+                            : tmp2;
 
                         float segmentStartX = e.ClipRectangle.Width - ((feedLength - (i + 1)) * _gridintervalx);
                         float segmentEndX = segmentStartX - _gridintervalx;
@@ -840,7 +906,7 @@ namespace GabTracker
                                         continue;
                                     }
 
-                                    double otherStartY = GetFeedYAtIndex(_feeds[k], _snapshots[k], comparisonLength, startIndex, valueScale);
+                                    double otherStartY = GetFeedYAtIndex(_feeds[k], _snapshots[k], comparisonLength, startIndex, valueScale, effectiveMaximum);
                                     if (otherStartY > tmp1)
                                     {
                                         double candidate = otherStartY - Math.Ceiling(_feeds[k].LineThickness / 2);
@@ -850,7 +916,7 @@ namespace GabTracker
                                         }
                                     }
 
-                                    double otherEndY = GetFeedYAtIndex(_feeds[k], _snapshots[k], comparisonLength, endIndex, valueScale);
+                                    double otherEndY = GetFeedYAtIndex(_feeds[k], _snapshots[k], comparisonLength, endIndex, valueScale, effectiveMaximum);
                                     if (otherEndY > tmp2)
                                     {
                                         double candidate = otherEndY - Math.Ceiling(_feeds[k].LineThickness / 2);
@@ -873,12 +939,14 @@ namespace GabTracker
 
                     //generate the string for the line unit
                     tmpstr = feed.LabelString;
+                    SizeF labelSize = e.Graphics.MeasureString(tmpstr, this.Font);
+                    double labelY = ClampY(tmp1 + _unitmargin, e.ClipRectangle, labelSize);
                     e.Graphics.DrawString(
                         tmpstr,
                         this.Font,
                         sb,
-                        e.ClipRectangle.Width - (e.Graphics.MeasureString(tmpstr, this.Font).Width) - _unitmargin,
-                        (float)tmp1 + _unitmargin,
+                        e.ClipRectangle.Width - labelSize.Width - _unitmargin,
+                        (float)labelY,
                         StringFormat.GenericDefault);
                 }
 
@@ -954,7 +1022,17 @@ namespace GabTracker
         /// <param name="e"></param>
         private void internalTimer_Tick(object sender, EventArgs e)
         {
+            AddCurrentValues();
+        }
+
+        /// <summary>
+        /// Adds one data point per feed from the current feed values.
+        /// </summary>
+        public void AddCurrentValues()
+        {
             double value;
+
+            CurrentValuesNeeded?.Invoke(this, EventArgs.Empty);
 
             lock (_dataLock)
             {
@@ -1018,7 +1096,6 @@ namespace GabTracker
             {
                 this.Invalidate();
             }
-
         }
 
         /// <summary>
