@@ -931,7 +931,7 @@ namespace GabTracker
                     feed.Data.Enqueue(value);
 
                     //remove the superfluous data
-                    while (feed.Data.Count >= _maxdatainmemory)
+                    while (feed.Data.Count > _maxdatainmemory)
                     {
                         feed.Data.Dequeue();
                     }
