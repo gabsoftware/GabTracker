@@ -24,6 +24,7 @@ namespace GabTracker
         private readonly object _dataLock = new object();
         private static readonly Color DefaultGridColor = Color.FromArgb(0, 75, 0);
         private static readonly Color DefaultGridThickerColor = Color.FromArgb(0, 75, 0);
+        private bool _autoStart = true;
 
         private static void EnsureBufferCapacity(ref double[] buffer, int requiredSize)
         {
@@ -84,6 +85,44 @@ namespace GabTracker
                 {
                     _backbrush.Color = value;
                 }                
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets whether the control starts and keeps its refresh timer running automatically.
+        /// </summary>
+        [Description("Starts the tracker refresh timer automatically when enabled.")]
+        [Category("Tracker Behavior")]
+        [Browsable(true)]
+        [DefaultValue(true)]
+        public bool AutoStart
+        {
+            get
+            {
+                return _autoStart;
+            }
+            set
+            {
+                if (_autoStart == value)
+                {
+                    return;
+                }
+
+                _autoStart = value;
+
+                if (internalTimer == null)
+                {
+                    return;
+                }
+
+                if (_autoStart)
+                {
+                    internalTimer.Start();
+                }
+                else
+                {
+                    internalTimer.Stop();
+                }
             }
         }
 
@@ -634,7 +673,10 @@ namespace GabTracker
             _gridthickerpen = new Pen(Color.FromArgb(0, 75, 0));
 
 
-            internalTimer.Start();
+            if (AutoStart)
+            {
+                internalTimer.Start();
+            }
         }
 
         /// <summary>
