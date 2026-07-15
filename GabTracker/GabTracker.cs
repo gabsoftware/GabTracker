@@ -60,23 +60,30 @@ namespace GabTracker
 
         private double GetFeedY(GabTrackerFeed feed, double rawValue, double valueScale, double maximum)
         {
-            double transformedValue = TransformValue(rawValue);
-            double transformedMinimum = TransformValue(_minimum);
-            double transformedMaximum = TransformValue(maximum);
+            double transformedValue = TransformValue(rawValue, maximum);
+            double transformedMinimum = TransformValue(_minimum, maximum);
+            double transformedMaximum = TransformValue(maximum, maximum);
 
             return feed.Inverted
                 ? (transformedValue - transformedMinimum) * valueScale
                 : (transformedMaximum - transformedValue) * valueScale;
         }
 
-        private double TransformValue(double value)
+        private double TransformValue(double value, double maximum)
         {
             value = Math.Max(_minimum, value);
 
             if (_valueScaleMode == ValueScaleMode.Logarithmic)
             {
-                double shiftedValue = Math.Max(0d, value - _minimum);
-                return Math.Log10(shiftedValue + 1d);
+                double range = maximum - _minimum;
+                if (range <= 0d)
+                {
+                    return 0d;
+                }
+
+                const double curveStrength = 15d;
+                double normalizedValue = Math.Max(0d, (value - _minimum) / range);
+                return Math.Log10(1d + (normalizedValue * curveStrength)) / Math.Log10(1d + curveStrength);
             }
 
             return value;
@@ -104,6 +111,47 @@ namespace GabTracker
 
             int clampedIndex = Math.Max(0, Math.Min(bufferLength - 1, dataIndex));
             return GetFeedY(feed, buffer[clampedIndex], valueScale, maximum);
+        }
+
+        private static GraphicsPath CreateRoundedRectanglePath(RectangleF rectangle, float radius)
+        {
+            float diameter = radius * 2f;
+            GraphicsPath path = new GraphicsPath();
+
+            path.AddArc(rectangle.Left, rectangle.Top, diameter, diameter, 180f, 90f);
+            path.AddArc(rectangle.Right - diameter, rectangle.Top, diameter, diameter, 270f, 90f);
+            path.AddArc(rectangle.Right - diameter, rectangle.Bottom - diameter, diameter, diameter, 0f, 90f);
+            path.AddArc(rectangle.Left, rectangle.Bottom - diameter, diameter, diameter, 90f, 90f);
+            path.CloseFigure();
+
+            return path;
+        }
+
+        private static void DrawCurrentValueLabel(Graphics graphics, string text, Font font, Brush textBrush, float x, float y)
+        {
+            if (String.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            const float horizontalPadding = 6f;
+            const float verticalPadding = 2f;
+            SizeF textSize = graphics.MeasureString(text, font);
+            RectangleF backgroundRectangle = new RectangleF(
+                x - horizontalPadding,
+                y - verticalPadding,
+                textSize.Width + (horizontalPadding * 2f),
+                textSize.Height + (verticalPadding * 2f));
+
+            using (GraphicsPath backgroundPath = CreateRoundedRectanglePath(backgroundRectangle, backgroundRectangle.Height / 2f))
+            using (PathGradientBrush backgroundBrush = new PathGradientBrush(backgroundPath))
+            {
+                backgroundBrush.CenterColor = Color.FromArgb(170, Color.Black);
+                backgroundBrush.SurroundColors = new[] { Color.FromArgb(0, Color.Black) };
+                graphics.FillPath(backgroundBrush, backgroundPath);
+            }
+
+            graphics.DrawString(text, font, textBrush, x, y, StringFormat.GenericDefault);
         }
 
 
@@ -845,7 +893,7 @@ namespace GabTracker
                     }
                 }
 
-                double range = TransformValue(effectiveMaximum) - TransformValue(_minimum);
+                double range = TransformValue(effectiveMaximum, effectiveMaximum) - TransformValue(_minimum, effectiveMaximum);
                 double valueScale = range != 0 ? (double)e.ClipRectangle.Height / range : 0d;
 
                 //feed fills
@@ -958,17 +1006,6 @@ namespace GabTracker
                             segmentEndY);
                     }
 
-                    //generate the string for the line unit
-                    tmpstr = feed.LabelString;
-                    SizeF labelSize = e.Graphics.MeasureString(tmpstr, this.Font);
-                    double labelY = ClampY(tmp1 + _unitmargin, e.ClipRectangle, labelSize);
-                    e.Graphics.DrawString(
-                        tmpstr,
-                        this.Font,
-                        sb,
-                        e.ClipRectangle.Width - labelSize.Width - _unitmargin,
-                        (float)labelY,
-                        StringFormat.GenericDefault);
                 }
 
                 //if legend should be drawn then
@@ -1029,6 +1066,32 @@ namespace GabTracker
                                 StringFormat.GenericDefault);
                         }
                     }
+
+                //current value labels
+                for (int fi = 0; fi < _feeds.Count; fi++)
+                {
+                    GabTrackerFeed feed = _feeds[fi];
+                    int feedLength = _snapshotLengths[fi];
+
+                    if (feedLength == 0)
+                    {
+                        continue;
+                    }
+
+                    sb = feed.LineBrush;
+                    tmp1 = GetFeedY(feed, _snapshots[fi][feedLength - 1], valueScale, effectiveMaximum);
+                    tmpstr = feed.LabelString;
+                    SizeF labelSize = e.Graphics.MeasureString(tmpstr, this.Font);
+                    double labelY = ClampY(tmp1 + _unitmargin, e.ClipRectangle, labelSize);
+
+                    DrawCurrentValueLabel(
+                        e.Graphics,
+                        tmpstr,
+                        this.Font,
+                        sb,
+                        e.ClipRectangle.Width - labelSize.Width - _unitmargin,
+                        (float)labelY);
+                }
                 }
             catch (Exception ex)
             {
